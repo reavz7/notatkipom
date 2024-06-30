@@ -1,0 +1,338 @@
+--------------UserSerializerInterface-----------------
+
+public interface UserSerializerInterface {
+    void serialize(List<User> users, String filename);
+    List<User> deserialize(String filename);
+}
+
+
+--------------------------Csv--------------------------
+
+public class CsvUserSerializer implements UserSerializerInterface {
+    @Override
+    public void serialize(List<User> users, String filename) {
+        String csvFile = "src/main/resources/" + filename + ".csv";
+        try (FileWriter writer = new FileWriter(csvFile)) {
+            for (User user : users) {
+                writer.write(user.getFirstname() + "," + user.getLastname() + "," + user.getAge() + "," + user.getEmail() + "\n");
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        System.out.println("Zapisano do pliku " + filename);
+    }
+    @Override
+    public List<User> deserialize(String filename) {
+        List<User> users = new ArrayList<>();
+        try (BufferedReader reader = new BufferedReader(new FileReader("src/main/resources/" + filename));
+             CSVParser csvParser = new CSVParser(reader, CSVFormat.DEFAULT)) {
+            for (CSVRecord csvRecord : csvParser) {
+                String firstname = csvRecord.get(0);
+                String lastname = csvRecord.get(1);
+                Integer age = Integer.parseInt(csvRecord.get(2));
+                String email = csvRecord.get(3);
+                User user = new User(firstname, lastname, age, email);
+                users.add(user);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return users;
+    }
+}
+//DEPENDENCIES:
+//<dependency>
+//    <groupId>org.apache.commons</groupId>
+//    <artifactId>commons-csv</artifactId>
+//    <version>1.9.0</version>
+//</dependency>
+
+
+--------------------------Binary--------------------------
+
+public class BinaryUserSerializer implements UserSerializerInterface{
+    @Override
+    public void serialize(List<User> users, String filename) {
+        String filePath = "src/main/resources/" + filename + ".bin";
+        try (FileOutputStream fos = new FileOutputStream(filePath);
+             ObjectOutputStream oos = new ObjectOutputStream(fos)){
+            oos.writeObject(users);
+        }
+        catch (IOException e){
+            e.printStackTrace();
+        }
+        System.out.println("Zapisano do pliku: " + filename);
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public List<User> deserialize(String filename) {
+        String filePath = "src/main/resources/" + filename;
+        try (FileInputStream fis = new FileInputStream(filePath);
+             ObjectInputStream ois = new ObjectInputStream(fis)) {
+            return (List<User>) ois.readObject();
+        } catch (IOException | ClassNotFoundException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+}
+
+//Dodaj
+//private static final long serialVersionUID = 1L;
+//do klasy user
+
+
+--------------------------Json--------------------------
+
+public class JsonUserSerializer implements UserSerializerInterface{
+    @Override
+    public void serialize(List<User> users, String filename) {
+        String filePath = "src/main/resources/" + filename + ".json";
+        try (FileWriter writer = new FileWriter(filePath)) {
+            Gson gson = new GsonBuilder().setPrettyPrinting().create();
+            gson.toJson(users, writer);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        System.out.println("Zapisano do pliku: " + filename);
+    }
+    @Override
+    public List<User> deserialize(String filename) {
+        String filePath = "src/main/resources/" + filename;
+        try (FileReader reader = new FileReader(filePath)) {
+            Gson gson = new Gson();
+            User[] usersArray = gson.fromJson(reader, User[].class);
+            return new ArrayList<>(Arrays.asList(usersArray));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+}
+//    DEPENDENCIES:
+//    <dependency>
+//    <groupId>com.google.code.gson</groupId>
+//    <artifactId>gson</artifactId>
+//    <version>2.8.8</version>
+//    </dependency>
+
+
+--------------------------Xml--------------------------
+
+public class XmlUserSerializer implements UserSerializerInterface{
+    @Override
+    public void serialize(List<User> users, String filename) {
+        String filePath = "src/main/resources/" + filename + ".xml";
+        try {
+            JAXBContext jaxbContext = JAXBContext.newInstance(UserList.class);
+            Marshaller marshaller = jaxbContext.createMarshaller();
+            marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true);
+            UserList userList = new UserList();
+            userList.setUsers(users);
+            marshaller.marshal(userList, new File(filePath));
+        } catch (JAXBException e) {
+            e.printStackTrace();
+        }
+        System.out.println("Zapisano do pliku: " + filename);
+    }
+
+    @Override
+    public List<User> deserialize(String filename) {
+        String filePath = "src/main/resources/" + filename;
+        try {
+            JAXBContext jaxbContext = JAXBContext.newInstance(UserList.class);
+            Unmarshaller unmarshaller = jaxbContext.createUnmarshaller();
+            UserList userList = (UserList) unmarshaller.unmarshal(new File(filePath));
+            return userList.getUsers();
+        } catch (JAXBException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+}
+
+@XmlRootElement(name = "users")
+class UserList {
+    private List<User> users;
+
+    @XmlElement(name = "user")
+    public List<User> getUsers() {
+        return users;
+    }
+
+    public void setUsers(List<User> users) {
+        this.users = users;
+    }
+}
+//Stwórz pusty konstruktor w klasie User
+// public User() {
+//    }
+
+//DEPENDENCIES:
+//<dependency>
+//    <groupId>javax.xml.bind</groupId>
+//    <artifactId>jaxb-api</artifactId>
+//    <version>2.3.1</version>
+//</dependency>
+//<dependency>
+//    <groupId>org.glassfish.jaxb</groupId>
+//    <artifactId>jaxb-runtime</artifactId>
+//    <version>2.3.1</version>
+//</dependency>
+
+
+
+------------------UserManagementInterface-------------------
+
+public interface UserManagementInterface {
+    public void addUser(User user, List<User> list);
+    public void removeUser(String firstname, String lastname, List<User> list);
+    public void displayUser(List<User> list);
+}
+
+
+
+----------------------UserManagement------------------------
+
+public class UserMenagement implements UserManagementInterface {
+    @Override
+    public void addUser(User user, List<User> list) {
+        list.add(user);
+        System.out.println("Dodano użytkownika");
+    }
+
+    @Override
+    public void removeUser(String firstname, String lastname, List<User> list) {
+        for (User u : list) {
+            if (u.getFirstname().equals(firstname) && u.getLastname().equals(lastname)) {
+                list.remove(u);
+                System.out.println("Usunięto użytkownika");
+                return;
+            }
+        }
+        System.out.println("Nie znaleziono użytkownika");
+    }
+
+    @Override
+    public void displayUser(List<User> list) {
+        System.out.println("Lista użytkowników:");
+        for (User u : list) {
+            System.out.println(u.getFirstname() + " " + u.getLastname() + " " + u.getAge() + " " + u.getEmail());
+        }
+    }
+}
+
+
+--------------------Randomliczba<1,49>------------------------
+(int) (Math.random() * 49 + 1);
+
+Random random = new Random();
+int liczba = random.nextInt(1,49);
+
+
+--------------------Przykłady Streamów------------------------
+
+public class DataAnalyzer implements DataAnalyzerInterface {
+    @Override
+    public double averageAge(List<Person> people) {
+        return people.stream()
+                .mapToInt(Person::getAge)
+                .average()
+                .orElse(0);
+    }
+    @Override
+    public String personWithLongestLastName(List<Person> people) {
+        return people.stream()
+                .max((p1, p2) -> p1.getLastName().length() - p2.getLastName().length())
+                .map(Person::getLastName)
+                .orElse("");
+    }
+    @Override
+    public List<Person> sortedByAgeDesc(List<Person> people) {
+        return people.stream()
+                .sorted((p1, p2) -> p2.getAge() - p1.getAge())
+                .toList();
+    }
+}
+
+--------------------Przykłady Streamów2------------------------
+    @Override
+    public void summaryQuantityByStream(List<Product> listOfProducts){
+        int summaryQuantity = listOfProducts.stream().mapToInt(Product::getQuantity).sum();
+        System.out.println("Summary quantity of products: " + summaryQuantity);
+    }
+    @Override
+    public void summaryWageByStream(List<Product> listOfProducts){
+        int summaryWage = listOfProducts.stream().mapToInt(p -> p.getWage() * p.getQuantity()).sum();
+        System.out.println("Summary wage of products: " + summaryWage);
+    }
+    @Override
+    public void summaryValueByStream(List<Product> listOfProducts){
+        double summaryValue = listOfProducts.stream().mapToDouble(Product::getValue).sum();
+        System.out.println("Summary value of products: " + summaryValue);
+    }
+    @Override
+    public void averageWageByStream(List<Product> listOfProducts){
+        double summaryWeight = listOfProducts.stream().mapToDouble(p -> p.getWage() * p.getQuantity()).sum();
+        double summaryQuantity = listOfProducts.stream().mapToInt(Product::getQuantity).sum();
+        System.out.println("Average weight of products: " + summaryWeight/summaryQuantity );
+    }
+    @Override
+    public void averageValueByStream(List<Product> listOfProducts){
+        double summaryValue = listOfProducts.stream().mapToDouble(Product::getValue).sum();
+        double summaryQuantity = listOfProducts.stream().mapToInt(Product::getQuantity).sum();
+        System.out.println("Average price of products: " + summaryValue/summaryQuantity );
+    }
+
+    @Override
+    public void minWageByStream(List<Product> listOfProducts){
+        int minWeight = listOfProducts.stream().mapToInt(Product::getWage).min().orElse(20);
+        System.out.println("Minimum weight of products: " + minWeight);
+    }
+
+    @Override
+    public void maxWageByStream(List<Product> listOfProducts){
+        int maxWeight = listOfProducts.stream().mapToInt(Product::getWage).max().orElse(0);
+        System.out.println("Maximum weight of products: " + maxWeight);
+    }
+
+
+    @Override
+    public void minValueByStream(List<Product> listOfProducts){
+        double minValue = listOfProducts.stream().mapToDouble(Product::getValue).min().orElse(20*1000);
+        System.out.println("Minimum value of products: " + minValue);
+    }
+
+    @Override
+    public void maxValueByStream(List<Product> listOfProducts){
+        double maxValue = listOfProducts.stream().mapToDouble(Product::getValue).max().orElse(0);
+        System.out.println("Maximum value of products: " + maxValue);
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
