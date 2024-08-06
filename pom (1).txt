@@ -311,7 +311,7 @@ public class DataAnalyzer implements DataAnalyzerInterface {
         System.out.println("Maximum value of products: " + maxValue);
     }
 
-//pointer variable integer 
+//pointer variable integert
 
 
 
